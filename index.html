@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>HAK Cyklus</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HAK Cyklus">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c2030;
+    --line: #2a2f3d;
+    --text: #e8e9ed;
+    --muted: #8b90a0;
+    --wait: #4a5468;
+    --safe: #3e8a6e;
+    --safe-bg: #16241f;
+    --caution: #c79a3d;
+    --caution-bg: #2a2418;
+    --unsafe: #b5495a;
+    --unsafe-bg: #2a1a1e;
+    --risk: #e0394f;
+    --risk-glow: rgba(224,57,79,0.35);
+    --accent: #6f8fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    min-height:100vh;
+    padding:20px 14px 60px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .wrap{max-width:560px;margin:0 auto;}
+
+  header{margin-bottom:18px;}
+  h1{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 4px;
+  }
+  .sub{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+
+  .row{display:flex;align-items:center;gap:10px;}
+  .row + .row{margin-top:10px;}
+
+  label{
+    font-size:12px;
+    color:var(--muted);
+    display:block;
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+
+  input[type="date"], input[type="number"]{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:15px;
+    width:100%;
+    font-family:inherit;
+  }
+  input[type="date"]:focus, input[type="number"]:focus{
+    outline:1px solid var(--accent);
+  }
+
+  .field{flex:1;}
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 14px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none;}
+
+  .status-banner{
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:14px;
+    border:1px solid var(--line);
+  }
+  .status-banner .label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    opacity:0.85;
+    margin-bottom:4px;
+  }
+  .status-banner .big{
+    font-size:19px;
+    font-weight:700;
+  }
+  .status-banner .detail{
+    font-size:13px;
+    margin-top:4px;
+    opacity:0.85;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap:6px;
+  }
+  .dow{
+    text-align:center;
+    font-size:10px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    padding-bottom:2px;
+  }
+
+  .day{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:9px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    border:1px solid transparent;
+    user-select:none;
+    transition:transform 0.08s ease;
+  }
+  .day:active{transform:scale(0.93);}
+
+  .day.empty{visibility:hidden;cursor:default;}
+
+  .day .num{font-size:13px;font-weight:600;line-height:1;}
+  .day .cyc{font-size:8.5px;opacity:0.65;margin-top:2px;line-height:1;}
+
+  .day.wait{background:var(--unsafe-bg); color:var(--unsafe); border-color:var(--line);}
+  .day.safe{background:var(--safe-bg); color:var(--safe);}
+  .day.caution{background:var(--caution-bg); color:var(--caution);}
+  .day.unsafe{background:var(--unsafe-bg); color:var(--unsafe);}
+
+  .day.today{box-shadow: 0 0 0 2px var(--accent) inset;}
+
+  .day.missed::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:9px;
+    border:2px solid var(--risk);
+  }
+  .day.missed .num{color:var(--risk);}
+  .day.missed .num::before{content:"";}
+
+  .day.risk-window{
+    background:var(--unsafe-bg) !important;
+    color:var(--risk) !important;
+    box-shadow: 0 0 0 1px var(--risk) inset;
+  }
+  .day.risk-window.today{
+    box-shadow: 0 0 0 2px var(--accent) inset, 0 0 0 1px var(--risk);
+  }
+  .day.risk-window::before{
+    content:"";
+    position:absolute;
+    top:3px; right:3px;
+    width:5px; height:5px;
+    border-radius:50%;
+    background:var(--risk);
+  }
+
+  .missed-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--risk);
+    background:var(--unsafe-bg);
+    border:1px solid var(--risk);
+    border-radius:20px;
+    padding:5px 12px;
+    margin-top:8px;
+    cursor:pointer;
+  }
+  .missed-pill:active{opacity:0.7;}
+
+  button{
+    font-family:inherit;
+    border:none;
+    border-radius:9px;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--accent); color:#0b0e16;}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--line);}
+  .btn-danger{background:transparent; color:var(--risk); border:1px solid var(--risk);}
+  .btn-row{display:flex; gap:8px; margin-top:4px;}
+  .btn-row button{flex:1;}
+
+  .hint{font-size:12px; color:var(--muted); line-height:1.5; margin-top:8px;}
+
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(10px);
+    background:#22262f;
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s, transform 0.2s;
+    z-index:50;
+    max-width:90%;
+    text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .missed-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+  .missed-chip{
+    font-size:11px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:4px 10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:var(--muted);
+  }
+  .missed-chip b{color:var(--risk); font-weight:600;}
+  .missed-chip .x{cursor:pointer; color:var(--muted); font-size:13px; line-height:1;}
+  .missed-chip .x:active{color:var(--risk);}
+
+  .month-title{
+    font-size:14px;
+    font-weight:600;
+    color:var(--muted);
+    margin-bottom:10px;
+    text-transform:capitalize;
+  }
+
+  .save-state{
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:14px;
+    min-height:14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>HAK Cyklus</h1>
+    <div class="sub">28-dňový cyklus · sledovanie účinnosti antikoncepcie</div>
+  </header>
+
+  <div id="statusBanner" class="status-banner"></div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <label for="startDate">Deň 1 cyklu (posledný štart)</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="field" style="max-width:90px;">
+        <label for="cycleLen">Dĺžka</label>
+        <input type="number" id="cycleLen" min="1" max="60" value="28">
+      </div>
+    </div>
+    <div class="hint">Uprav dátum, ak sa posunul reálny začiatok cyklu. Kalendár sa prepočíta automaticky.</div>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span><i class="dot" style="background:var(--unsafe)"></i>1–6 not safe (nábeh)</span>
+      <span><i class="dot" style="background:var(--safe)"></i>7–20 safe</span>
+      <span><i class="dot" style="background:var(--caution)"></i>21–24 prechod</span>
+      <span><i class="dot" style="background:var(--unsafe)"></i>25–28 not safe</span>
+      <span><i class="dot" style="background:var(--risk)"></i>vynechaný / riziko 7 dní</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="month-title" id="monthTitle">&nbsp;</div>
+    <div class="grid" id="dowRow"></div>
+    <div class="grid" id="calGrid" style="margin-top:6px;"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn-ghost" id="prevMonth">‹ Predošlý</button>
+      <button class="btn-ghost" id="todayBtn">Dnes</button>
+      <button class="btn-ghost" id="nextMonth">Ďalej ›</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label style="margin-bottom:8px;">Vynechané dni (klikni na deň v kalendári alebo zadaj nižšie)</label>
+    <div class="row">
+      <input type="date" id="missedInput" class="field">
+      <button class="btn-danger" id="addMissed">+ Vynechané</button>
+    </div>
+    <div class="missed-list" id="missedList"></div>
+    <div class="hint">Po vynechaní sa nasledujúcich 7 dní (vrátane dňa vynechania) označí červeným rámikom — antikoncepcia v tomto okne nemusí mať plný účinok, bez ohľadu na fázu cyklu.</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-ghost" id="resetBtn">Obnoviť od dneška ako deň 1</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-ghost" id="exportBtn">Exportovať zálohu</button>
+    <button class="btn-ghost" id="importBtn">Importovať zálohu</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" style="display:none;">
+
+  <div class="save-state" id="saveState"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DOW = ['Po','Ut','St','Št','Pi','So','Ne'];
+const MONTHS = ['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+
+let state = {
+  startDate: null,      // 'YYYY-MM-DD' = day 1 of cycle
+  cycleLen: 28,
+  missedDates: []       // array of 'YYYY-MM-DD'
+};
+
+let viewMonth; // Date object, first of month currently displayed
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function fmt(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function parseDate(s){
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function daysBetween(a,b){
+  return Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
+}
+function addDays(d, n){
+  const r = new Date(d);
+  r.setDate(r.getDate()+n);
+  return r;
+}
+
+function cycleDayFor(dateStr){
+  if(!state.startDate) return null;
+  const start = parseDate(state.startDate);
+  const d = parseDate(dateStr);
+  const diff = daysBetween(start, d);
+  const len = state.cycleLen || 28;
+  let mod = diff % len;
+  if(mod < 0) mod += len;
+  return mod + 1; // 1-indexed
+}
+
+function phaseForCycleDay(cd){
+  if(cd >= 1 && cd <= 6) return 'wait';
+  if(cd >= 7 && cd <= 20) return 'safe';
+  if(cd >= 21 && cd <= 24) return 'caution';
+  return 'unsafe'; // 25-28 (or overflow if cycleLen != 28)
+}
+
+function isInRiskWindow(dateStr){
+  const d = parseDate(dateStr);
+  for(const m of state.missedDates){
+    const md = parseDate(m);
+    const diff = daysBetween(md, d);
+    if(diff >= 0 && diff <= 6) return true;
+  }
+  return false;
+}
+
+function isMissed(dateStr){
+  return state.missedDates.includes(dateStr);
+}
+
+// ---------- persistence (localStorage — čisto lokálne v telefóne) ----------
+const STORAGE_KEY = 'hak-cycle-state-v1';
+let saveTimer = null;
+
+function save(){
+  const el = document.getElementById('saveState');
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    el.textContent = 'Uložené ' + new Date().toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    el.textContent = 'Uloženie zlyhalo — skús znova.';
+  }
+}
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 300);
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign(state, parsed);
+    }
+  }catch(e){
+    // no existing key — fine, use defaults
+  }
+}
+
+// ---------- UI ----------
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+function renderDow(){
+  const row = document.getElementById('dowRow');
+  row.innerHTML = '';
+  for(const d of DOW){
+    const el = document.createElement('div');
+    el.className = 'dow';
+    el.textContent = d;
+    row.appendChild(el);
+  }
+}
+
+function renderStatusBanner(){
+  const banner = document.getElementById('statusBanner');
+  const today = startOfDay(new Date());
+  const todayStr = fmt(today);
+
+  if(!state.startDate){
+    banner.style.borderColor = 'var(--line)';
+    banner.style.background = 'var(--panel)';
+    banner.innerHTML = '<div class="label">Bez dát</div><div class="big">Zadaj deň 1 cyklu nižšie</div>';
+    return;
+  }
+
+  const cd = cycleDayFor(todayStr);
+  const phase = phaseForCycleDay(cd);
+  const risk = isInRiskWindow(todayStr);
+  const missedToday = isMissed(todayStr);
+
+  const phaseLabels = {
+    wait: ['Not safe', 'Dni 1–6 — HAK ešte nemá plný účinok, použi doplnkovú ochranu.'],
+    safe: ['Safe', 'Bežná spoľahlivá fáza cyklu.'],
+    caution: ['Prechod', 'Hraničná fáza medzi safe a not safe.'],
+    unsafe: ['Not safe', 'Vysoké riziko, použi doplnkovú ochranu.']
+  };
+
+  let [label, detail] = phaseLabels[phase];
+  let color = {wait:'var(--unsafe)', safe:'var(--safe)', caution:'var(--caution)', unsafe:'var(--unsafe)'}[phase];
+  let bg = {wait:'var(--unsafe-bg)', safe:'var(--safe-bg)', caution:'var(--caution-bg)', unsafe:'var(--unsafe-bg)'}[phase];
+
+  if(risk){
+    color = 'var(--risk)';
+    bg = 'var(--unsafe-bg)';
+    detail = (missedToday ? 'Dnes vynechaný deň. ' : '') + 'V okne 7 dní po vynechaní — účinnosť nie je istá, bez ohľadu na fázu.';
+  }
+
+  banner.style.borderColor = color;
+  banner.style.background = bg;
+  banner.style.color = color;
+  banner.innerHTML =
+    '<div class="label">Dnes · deň ' + cd + ' / ' + state.cycleLen + '</div>' +
+    '<div class="big">' + label + (risk ? ' ⚠' : '') + '</div>' +
+    '<div class="detail">' + detail + '</div>';
+}
+
+function renderCalendar(){
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const title = document.getElementById('monthTitle');
+  title.textContent = MONTHS[viewMonth.getMonth()] + ' ' + viewMonth.getFullYear();
+
+  const firstOfMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+  // Monday-first index: JS getDay() Sun=0..Sat=6 -> want Mon=0..Sun=6
+  let leadEmpty = (firstOfMonth.getDay() + 6) % 7;
+
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate();
+  const todayStr = fmt(startOfDay(new Date()));
+
+  for(let i=0;i<leadEmpty;i++){
+    const empty = document.createElement('div');
+    empty.className = 'day empty';
+    grid.appendChild(empty);
+  }
+
+  for(let day=1; day<=daysInMonth; day++){
+    const dateObj = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+    const dateStr = fmt(dateObj);
+    const cell = document.createElement('div');
+    cell.className = 'day';
+    cell.dataset.date = dateStr;
+
+    let cd = null, phase = null;
+    if(state.startDate){
+      cd = cycleDayFor(dateStr);
+      phase = phaseForCycleDay(cd);
+      cell.classList.add(phase);
+    }else{
+      cell.classList.add('wait');
+    }
+
+    if(dateStr === todayStr) cell.classList.add('today');
+    if(isInRiskWindow(dateStr)) cell.classList.add('risk-window');
+    if(isMissed(dateStr)) cell.classList.add('missed');
+
+    const num = document.createElement('div');
+    num.className = 'num';
+    num.textContent = day;
+    cell.appendChild(num);
+
+    if(cd !== null){
+      const cyc = document.createElement('div');
+      cyc.className = 'cyc';
+      cyc.textContent = 'd' + cd;
+      cell.appendChild(cyc);
+    }
+
+    cell.addEventListener('click', () => onDayClick(dateStr));
+    grid.appendChild(cell);
+  }
+}
+
+function renderMissedList(){
+  const list = document.getElementById('missedList');
+  list.innerHTML = '';
+  if(state.missedDates.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'hint';
+    empty.textContent = 'Žiadne vynechané dni zaznamenané.';
+    list.appendChild(empty);
+    return;
+  }
+  const sorted = [...state.missedDates].sort();
+  for(const m of sorted){
+    const chip = document.createElement('div');
+    chip.className = 'missed-chip';
+    const d = parseDate(m);
+    chip.innerHTML = '<b>' + pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.</b>';
+    const x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.addEventListener('click', (e) => { e.stopPropagation(); removeMissed(m); });
+    chip.appendChild(x);
+    list.appendChild(chip);
+  }
+}
+
+function renderAll(){
+  renderStatusBanner();
+  renderCalendar();
+  renderMissedList();
+}
+
+function onDayClick(dateStr){
+  if(isMissed(dateStr)){
+    if(confirm('Odznačiť ' + dateStr + ' ako vynechaný deň?')){
+      removeMissed(dateStr);
+    }
+  } else {
+    if(confirm('Označiť ' + dateStr + ' ako vynechaný deň?\nNasledujúcich 7 dní sa zvýrazní ako rizikové.')){
+      addMissed(dateStr);
+    }
+  }
+}
+
+function addMissed(dateStr){
+  if(!state.missedDates.includes(dateStr)){
+    state.missedDates.push(dateStr);
+    renderAll();
+    scheduleSave();
+    showToast('Vynechaný deň zaznamenaný — riziko ďalších 7 dní.');
+  }
+}
+
+function removeMissed(dateStr){
+  state.missedDates = state.missedDates.filter(d => d !== dateStr);
+  renderAll();
+  scheduleSave();
+  showToast('Vynechaný deň odstránený.');
+}
+
+// ---------- controls ----------
+function wireControls(){
+  const startInput = document.getElementById('startDate');
+  const cycleInput = document.getElementById('cycleLen');
+
+  startInput.addEventListener('change', () => {
+    if(startInput.value){
+      state.startDate = startInput.value;
+      renderAll();
+      scheduleSave();
+      showToast('Deň 1 cyklu aktualizovaný.');
+    }
+  });
+
+  cycleInput.addEventListener('change', () => {
+    const v = parseInt(cycleInput.value, 10);
+    if(v && v > 0){
+      state.cycleLen = v;
+      renderAll();
+      scheduleSave();
+    }
+  });
+
+  document.getElementById('addMissed').addEventListener('click', () => {
+    const v = document.getElementById('missedInput').value;
+    if(!v){ showToast('Najprv vyber dátum.'); return; }
+    addMissed(v);
+    document.getElementById('missedInput').value = '';
+  });
+
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
+    renderCalendar();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1);
+    renderCalendar();
+  });
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    const t = new Date();
+    viewMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+    renderCalendar();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if(confirm('Nastaviť dnešný deň ako nový deň 1 cyklu?')){
+      const t = startOfDay(new Date());
+      state.startDate = fmt(t);
+      document.getElementById('startDate').value = state.startDate;
+      renderAll();
+      scheduleSave();
+      showToast('Nový cyklus začína dnes.');
+    }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'hak-cyklus-zaloha-' + fmt(startOfDay(new Date())) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Záloha stiahnutá.');
+  });
+
+  document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(!parsed.startDate){ throw new Error('chýba startDate'); }
+        state = {
+          startDate: parsed.startDate,
+          cycleLen: parsed.cycleLen || 28,
+          missedDates: Array.isArray(parsed.missedDates) ? parsed.missedDates : []
+        };
+        document.getElementById('startDate').value = state.startDate;
+        document.getElementById('cycleLen').value = state.cycleLen;
+        renderAll();
+        save();
+        showToast('Záloha importovaná.');
+      }catch(err){
+        showToast('Neplatný súbor zálohy.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+}
+
+// ---------- init ----------
+async function init(){
+  await load();
+
+  if(!state.startDate){
+    // default seed: 16.6. of current year context (user's stated cycle start)
+    state.startDate = '2026-06-16';
+  }
+  if(!state.cycleLen) state.cycleLen = 28;
+
+  document.getElementById('startDate').value = state.startDate;
+  document.getElementById('cycleLen').value = state.cycleLen;
+
+  const today = new Date();
+  viewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  renderDow();
+  wireControls();
+  renderAll();
+}
+
+init();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
